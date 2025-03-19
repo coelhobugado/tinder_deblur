@@ -58,10 +58,12 @@ For users of other browsers or those who prefer UserScripts:
    - [Violentmonkey](https://violentmonkey.github.io/)
    - [Greasemonkey](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/) (Firefox only)
 
-2. **Install Tinder Deblur script**:
-   - Click on this [GitHub](https://github.com/coelhobugado/tinder_deblur/blob/main/deblurtinder.js) (or visit the repository and click "Raw" on the script file)
-   - Your UserScript manager will prompt you to install the script
-   - Click "Install" or "OK" to confirm
+2.**Install Tinder Deblur Script**:  
+- Install Tampermonkey (or another UserScript manager) in your browser if you haven’t already.
+- Click this [GitHub link](https://github.com/coelhobugado/tinder_deblur/blob/main/deblurtinder.js) to access the script.
+- On GitHub, click the "Raw" button to open the script file.
+- Your UserScript manager (like Tampermonkey) should prompt you to install the script.
+- Click "Install" or "OK" to confirm.  
 
 3. **Usage**:
    - Log in to [Tinder Web](https://tinder.com/)
@@ -120,9 +122,11 @@ Para usuários de outros navegadores ou que preferem UserScripts:
    - [Greasemonkey](https://addons.mozilla.org/pt-BR/firefox/addon/greasemonkey/) (Apenas Firefox)
 
 2. **Instale o script Tinder Deblur**:
-   - Clique neste [GitHub](https://github.com/coelhobugado/tinder_deblur/blob/main/deblurtinder.js) (ou visite o repositório e clique em "Raw" no arquivo do script)
-   - Seu gerenciador de UserScripts solicitará a instalação do script
-   - Clique em "Instalar" ou "OK" para confirmar
+- Instale o Tampermonkey (ou outro gerenciador de UserScripts) no seu navegador, caso ainda não tenha.  
+- Clique neste [link do GitHub](https://github.com/coelhobugado/tinder_deblur/blob/main/deblurtinder.js) para acessar o script.
+- No GitHub, clique no botão "Raw" para abrir o código do script.  
+- Seu gerenciador de UserScripts (como o Tampermonkey) deve exibir um aviso pedindo para instalar o script.
+- Clique em "Instalar" ou "OK" para confirmar a instalação.  
 
 3. **Uso**:
    - Faça login no [Tinder Web](https://tinder.com/)
