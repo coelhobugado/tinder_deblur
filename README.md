@@ -1,113 +1,71 @@
-# Tinder Deblur
+# Tinder Deblur - Extensão para Chrome
 
-<div align="center">
-  
-![Tinder Deblur Logo](https://placehold.co/600x200/f9a8d4/333333.png?text=Tinder+Deblur&font=montserrat)
+Esta extensão permite desembaçar as fotos de quem já curtiu você no Tinder Gold, permitindo ver os perfis completos antes de dar match.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](https://github.com/yourusername/tinder-deblur)
+## Como funciona?
 
-*Remove o desfoque das fotos de pessoas que curtiram você no Tinder*
+A extensão funciona obtendo os dados originais das imagens embaçadas diretamente da API do Tinder. Quando você visita a página de "Curtidas" do Tinder, a extensão automaticamente tenta desembaçar as fotos.
 
-[English](#english) | [Português](#português)
+## Funcionalidades
 
-</div>
+- Botão flutuante na interface do Tinder para desembaçar fotos
+- Desembaçamento automático quando você acessa a página de curtida- Detecção inteligente para evitar processamento repetido de imagens já desembaçadas
+- Popup com informações de status e botão para desembaçar manualmente
+- Compatível com a versão web do Tinder
 
----
+## Versões
 
-## English
+- **1.0.1**: Corrigido problema de loop infinito ao tentar desembaçar repetidamente as mesmas imagens; melhorias no ícone da extensão
+- **1.0.0**: Versão inicial
 
-### 📋 Overview
-Tinder Deblur is a powerful userscript that automatically removes the blur effect from photos in the "Likes You" section on Tinder, allowing you to see who liked your profile without purchasing Tinder Gold or Platinum.
+## Como instalar
 
-### ✨ Features
-- **Automatic Deblurring**: Instantly removes blur from photos in the "Likes You" section
-- **Manual Control**: Provides a convenient floating button for on-demand deblurring
-- **API Integration**: Utilizes Tinder's own API to retrieve the original, high-quality images
-- **Real-time Updates**: Automatically detects and deblurs new likes as they appear
-- **Simple UI**: Clean interface that integrates seamlessly with Tinder's design
-- **Privacy Focused**: Runs entirely in your browser with no data sent to third parties
+1. Faça o download do arquivo `tinder-deblur-extension.tar.gz`
+2. Extraia o arquivo para uma pasta no seu computador
+3. Abra o Chrome e vá para `chrome://extensions/`
+4. Ative o "Modo do desenvolvedor" (botão no canto superior direito)
+5. Clique em "Carregar sem compactação"
+6. Selecione a pasta `tinder-deblur-extension` que você extraiu
 
-### 🛠️ Installation
+## Como usar
 
-#### Prerequisites
-- An active Tinder account
-- A modern web browser (Chrome, Firefox, Edge, or Safari)
-- A UserScript manager extension
+1. Faça login no Tinder através do site `https://tinder.com`
+2. Navegue até a seção "Curtidas" ou "Tinder Gold"
+3. Um botão "Desembaçar Fotos" aparecerá no canto superior direito
+4. Clique no botão para desembaçar as fotos
+5. Alternativamente, clique no ícone da extensão na barra de ferramentas do Chrome para desembaçar as fotos
 
-#### Step-by-Step Installation
-1. **Install a UserScript manager**:
-   - [Tampermonkey](https://www.tampermonkey.net/) (Recommended)
-   - [Violentmonkey](https://violentmonkey.github.io/)
-   - [Greasemonkey](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/) (Firefox only)
+## Observações importantes
 
-2. **Install Tinder Deblur script**:
-   - Click on this [installation link](#) (or visit the repository and click "Raw" on the script file)
-   - Your UserScript manager will prompt you to install the script
-   - Click "Install" or "OK" to confirm
+- Esta extensão funciona apenas com a versão web do Tinder (tinder.com)
+- É necessário estar logado no Tinder para a extensão funcionar
+- O desembaçamento só funciona na página de "Curtidas" ou "Tinder Gold"
+- Esta extensão não altera permanentemente o comportamento do Tinder
+- O Tinder pode atualizar sua interface ou API a qualquer momento, o que pode fazer com que a extensão pare de funcionar
 
-3. **Usage**:
-   - Log in to [Tinder Web](https://tinder.com/)
-   - Navigate to the "Likes You" section
-   - The script will automatically deblur photos, or you can click the "Deblur Photos" button
+## Segurança e Privacidade
 
-### 💻 Technical Details
-The script works by intercepting network requests to Tinder's API and extracting the original image URLs from the response data. It then replaces the blurred images with their unblurred counterparts without affecting other functionality.
+- Esta extensão não coleta nem envia seus dados para servidores externos
+- Todo o processamento acontece localmente no seu navegador
+- A extensão acessa apenas a API oficial do Tinder para obter as imagens originais
+- Seu token de autenticação é usado apenas para fazer requisições à API do Tinder
 
-### ⚠️ Disclaimer
-This script is provided for educational purposes only. Using this script may violate Tinder's Terms of Service. Use at your own risk. The authors are not responsible for any account suspension or other consequences that may result from using this script.
+## Resolução de problemas
 
----
+Se a extensão não estiver funcionando:
 
-## Português
+1. Verifique se você está na página correta do Tinder (seção de Curtidas)
+2. Tente recarregar a página
+3. Verifique se você está logado corretamente no Tinder
+4. Reinicie o navegador Chrome
+5. Se a página de curtidas mudou e os seletores não funcionam mais, aguarde por uma atualização da extensão
 
-### 📋 Visão Geral
-Tinder Deblur é um poderoso userscript que remove automaticamente o efeito de desfoque das fotos na seção "Likes You" do Tinder, permitindo que você veja quem curtiu seu perfil sem precisar comprar o Tinder Gold ou Platinum.
+## Limitações
 
-### ✨ Funcionalidades
-- **Remoção Automática do Desfoque**: Remove instantaneamente o desfoque das fotos na seção "Likes You"
-- **Controle Manual**: Oferece um botão flutuante conveniente para remoção do desfoque sob demanda
-- **Integração com API**: Utiliza a própria API do Tinder para recuperar as imagens originais de alta qualidade
-- **Atualizações em Tempo Real**: Detecta e remove automaticamente o desfoque de novos likes à medida que aparecem
-- **Interface Simples**: Interface limpa que se integra perfeitamente ao design do Tinder
-- **Focado em Privacidade**: Executado inteiramente no seu navegador, sem envio de dados para terceiros
+- O desembaçamento funciona apenas para os perfis mostrados na interface
+- Alguns perfis podem não ser desembaçados se o Tinder alterar a estrutura dos dados
+- A extensão pode parar de funcionar se o Tinder alterar sua API ou interface
 
-### 🛠️ Instalação
+## Aviso Legal
 
-#### Pré-requisitos
-- Uma conta ativa no Tinder
-- Um navegador web moderno (Chrome, Firefox, Edge ou Safari)
-- Uma extensão gerenciadora de UserScripts
-
-#### Instalação Passo a Passo
-1. **Instale um gerenciador de UserScripts**:
-   - [Tampermonkey](https://www.tampermonkey.net/) (Recomendado)
-   - [Violentmonkey](https://violentmonkey.github.io/)
-   - [Greasemonkey](https://addons.mozilla.org/pt-BR/firefox/addon/greasemonkey/) (Apenas Firefox)
-
-2. **Instale o script Tinder Deblur**:
-   - Clique neste [link de instalação](#) (ou visite o repositório e clique em "Raw" no arquivo do script)
-   - Seu gerenciador de UserScripts solicitará a instalação do script
-   - Clique em "Instalar" ou "OK" para confirmar
-
-3. **Uso**:
-   - Faça login no [Tinder Web](https://tinder.com/)
-   - Navegue até a seção "Likes You"
-   - O script removerá automaticamente o desfoque das fotos, ou você pode clicar no botão "Deblur Photos"
-
-### 💻 Detalhes Técnicos
-O script funciona interceptando requisições de rede para a API do Tinder e extraindo as URLs das imagens originais dos dados de resposta. Em seguida, substitui as imagens desfocadas por suas versões nítidas correspondentes sem afetar outras funcionalidades.
-
-### ⚠️ Aviso Legal
-Este script é fornecido apenas para fins educacionais. O uso deste script pode violar os Termos de Serviço do Tinder. Use por sua própria conta e risco. Os autores não são responsáveis por qualquer suspensão de conta ou outras consequências que possam resultar do uso deste script.
-
----
-
-## 📄 License
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🤝 Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📞 Support
-If you encounter any issues or have questions, please open an issue in the GitHub repository.
+Esta extensão é fornecida "como está", sem garantias. Não somos afiliados ao Tinder e não podemos garantir que a extensão continuará funcionando em versões futuras do site. Use por sua conta e risco.

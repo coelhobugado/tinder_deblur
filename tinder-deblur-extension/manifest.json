@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Tinder Deblur",
+  "version": "1.0.1",
+  "description": "Extensão para desembaçar fotos de quem curtiu você no Tinder",
+  "icons": {
+    "16": "images/icon.svg",
+    "48": "images/icon.svg",
+    "128": "images/icon.svg"
+  },
+  "action": {
+    "default_icon": "images/icon.svg",
+    "default_title": "Tinder Deblur",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://tinder.com/*",
+    "https://api.gotinder.com/*",
+    "https://preview.gotinder.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://tinder.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
