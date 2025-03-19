@@ -59,7 +59,7 @@ For users of other browsers or those who prefer UserScripts:
    - [Greasemonkey](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/) (Firefox only)
 
 2. **Install Tinder Deblur script**:
-   - Click on this [installation link](#) (or visit the repository and click "Raw" on the script file)
+   - Click on this [GitHub](https://github.com/coelhobugado/tinder_deblur/blob/main/deblurtinder.js) (or visit the repository and click "Raw" on the script file)
    - Your UserScript manager will prompt you to install the script
    - Click "Install" or "OK" to confirm
 
@@ -120,7 +120,7 @@ Para usuários de outros navegadores ou que preferem UserScripts:
    - [Greasemonkey](https://addons.mozilla.org/pt-BR/firefox/addon/greasemonkey/) (Apenas Firefox)
 
 2. **Instale o script Tinder Deblur**:
-   - Clique neste [link de instalação](#) (ou visite o repositório e clique em "Raw" no arquivo do script)
+   - Clique neste [GitHub](https://github.com/coelhobugado/tinder_deblur/blob/main/deblurtinder.js) (ou visite o repositório e clique em "Raw" no arquivo do script)
    - Seu gerenciador de UserScripts solicitará a instalação do script
    - Clique em "Instalar" ou "OK" para confirmar
 
