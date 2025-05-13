@@ -1,268 +1,354 @@
 // ==UserScript==
-// @name         Simplified Tinder Deblur
+// @name         Persistent Tinder Deblur & Info (v1.4 Visual Restore)
 // @namespace    https://github.com/coelhobugado/tinder_deblur
-// @version      1.0
-// @description  Simple script to unblur photos of people who liked you on Tinder
-// @author       CoelhoBugado
-// @match        https://tinder.com/*
-// @grant        none
+// @version      1.4.1
+// @description  Unblurs photos, shows extra info on hover. Remembers processed likes and restores visuals on page load. Works only on likes-you page.
+// @author       CoelhoBugado (enhanced by AI)
+// @match        https://tinder.com/app/likes-you*
+// @grant        GM_setValue
+// @grant        GM_getValue
 // @license      MIT
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    // Basic configuration
     const CONFIG = {
-        // Important selectors
         selectors: {
-            likedPreviewContainer: '.Expand.enterAnimationContainer > div:nth-child(1)' // Selector for blurred images
+            likedPreviewContainer: '.Expand.enterAnimationContainer > div:nth-child(1)'
         },
-        // Delays to ensure elements are ready
         delays: {
-            pageLoad: 2000, // 2 seconds after page load
-            deblurAttempt: 1500, // 1.5 seconds between attempts
-            domCheck: 1000 // 1 second to check for URL changes
-        }
+            pageLoad: 1500,
+            deblurAttempt: 1500,
+            domCheck: 1000,
+            observerDebounce: 1200
+        },
+        storageKey: 'tinderDeblurProcessedUserIds_v2'
     };
 
-    // Utility functions
+    let processedUserIds = new Set();
+    let deblurringInProgress = false;
+    let observerDebounceTimeout = null;
+    let deblurButton = null;
+
     const util = {
-        log: (message) => {
-            console.log(`[Tinder Deblur] ${message}`);
-        },
-        error: (message) => {
-            console.error(`[Tinder Deblur] ${message}`);
-        },
+        log: (message) => console.log(`[Tinder Deblur v1.4.1] ${message}`),
+        error: (message, ...optionalParams) => console.error(`[Tinder Deblur v1.4.1] ${message}`, ...optionalParams),
         addStyle: (css) => {
-            const style = document.createElement('style');
-            style.textContent = css;
-            document.head.appendChild(style);
+            const styleId = 'tinder-deblur-styles';
+            let style = document.getElementById(styleId);
+            if (!style) {
+                style = document.createElement('style');
+                style.id = styleId;
+                style.textContent = css;
+                document.head.appendChild(style);
+            }
         }
     };
 
-    // Main function to deblur images
-    const deblurImages = async () => {
-        try {
-            util.log('Starting deblurring process...');
-
-            // Get authentication token
-            const token = localStorage.getItem('TinderWeb/APIToken');
-            if (!token) {
-                util.error('Authentication token not found. Please log in to Tinder.');
-                return false;
+    const infoHelper = {
+        calculateAge: (birthDateString) => {
+            if (!birthDateString) return null;
+            const birthDate = new Date(birthDateString);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
             }
+            return age;
+        },
+        addOrUpdateInfo: (parentElement, text, className, icon = '', customStyles = {}) => {
+            const mainOverlayClass = 'tinder-info-overlay-container';
+            let mainOverlay = parentElement.querySelector(`.${mainOverlayClass}`);
 
-            // Fetch data from Tinder API
-            const response = await fetch('https://api.gotinder.com/v2/fast-match/teasers', {
-                headers: {
-                    'X-Auth-Token': token,
-                    'platform': 'android', // Important for retrieving unfiltered data
-                    'Content-Type': 'application/json'
+            if (className === mainOverlayClass) {
+                if (!mainOverlay) {
+                    mainOverlay = document.createElement('div');
+                    mainOverlay.className = mainOverlayClass;
+                    Object.assign(mainOverlay.style, {
+                        position: 'absolute', bottom: '5px', left: '5px', right: '5px',
+                        backgroundColor: 'rgba(0, 0, 0, 0.85)', color: 'white', padding: '5px 7px',
+                        borderRadius: '6px', fontSize: '11px', lineHeight: '1.4',
+                        textAlign: 'left', zIndex: '10', display: 'none',
+                        flexDirection: 'column', gap: '3px', pointerEvents: 'none',
+                        boxSizing: 'border-box'
+                    });
+                    if (getComputedStyle(parentElement).position === 'static') {
+                        parentElement.style.position = 'relative';
+                    }
+                    parentElement.appendChild(mainOverlay);
                 }
+                Object.assign(mainOverlay.style, customStyles);
+                return;
+            }
+            if (!mainOverlay) return;
+            let infoElement = mainOverlay.querySelector(`.${className.replace(/\s+/g, '-')}`);
+            if (!infoElement) {
+                infoElement = document.createElement('div');
+                infoElement.className = className.replace(/\s+/g, '-');
+                mainOverlay.appendChild(infoElement);
+            }
+            infoElement.innerHTML = `${icon} ${text}`;
+            Object.assign(infoElement.style, customStyles);
+        },
+        clearPreviousInfo: (parentElement) => {
+            const mainOverlay = parentElement.querySelector('.tinder-info-overlay-container');
+            if (mainOverlay) mainOverlay.remove();
+        }
+    };
+
+    async function loadProcessedIds() {
+        const storedData = await GM_getValue(CONFIG.storageKey, JSON.stringify([]));
+        try {
+            processedUserIds = new Set(JSON.parse(storedData));
+            util.log(`Loaded ${processedUserIds.size} processed user IDs from storage.`);
+        } catch (e) {
+            util.error("Error parsing stored data, starting fresh.", e);
+            processedUserIds = new Set();
+        }
+    }
+
+    async function saveProcessedId(userId) {
+        if (userId && !processedUserIds.has(userId)) {
+            processedUserIds.add(userId);
+            try {
+                await GM_setValue(CONFIG.storageKey, JSON.stringify(Array.from(processedUserIds)));
+            } catch (e) {
+                util.error("Error saving processed ID to storage.", e);
+            }
+        }
+    }
+
+    async function resetProcessedIds() {
+        processedUserIds.clear();
+        try {
+            await GM_setValue(CONFIG.storageKey, JSON.stringify([]));
+            util.log("Cleared processed user IDs from storage.");
+        } catch (e) { util.error("Error clearing processed IDs from storage.", e); }
+
+        const teaserEls = document.querySelectorAll(`${CONFIG.selectors.likedPreviewContainer}[data-tinder-script-processed="true"]`);
+        teaserEls.forEach(el => {
+            delete el.dataset.tinderScriptProcessed;
+            infoHelper.clearPreviousInfo(el);
+            el.style.backgroundImage = '';
+            el.style.filter = '';
+        });
+        util.log("Visual markers and styles on DOM elements reset.");
+    }
+
+    const deblurImagesAndAddInfo = async () => {
+        if (deblurringInProgress) return false;
+
+        deblurringInProgress = true;
+        util.log('Starting/Updating visual processing...');
+
+        try {
+            const token = localStorage.getItem('TinderWeb/APIToken');
+            if (!token) { util.error('Authentication token not found.'); deblurringInProgress = false; return false; }
+
+            const response = await fetch('https://api.gotinder.com/v2/fast-match/teasers', {
+                headers: { 'X-Auth-Token': token, 'platform': 'android', 'Content-Type': 'application/json' }
             });
 
-            if (!response.ok) {
-                util.error(`Request error: ${response.status} ${response.statusText}`);
-                return false;
-            }
-
+            if (!response.ok) { util.error(`API Request error: ${response.status} ${response.statusText}`); deblurringInProgress = false; return false; }
             const data = await response.json();
+            if (!data || !data.data || !data.data.results || !Array.isArray(data.data.results)) { util.error('Invalid API data format'); deblurringInProgress = false; return false; }
 
-            if (!data || !data.data || !data.data.results || !Array.isArray(data.data.results)) {
-                util.error('Invalid data format in API response');
-                return false;
-            }
+            const teasersFromApi = data.data.results;
+            if (teasersFromApi.length === 0) { util.log('No teasers returned from API.'); deblurringInProgress = false; return true; }
+            util.log(`Fetched ${teasersFromApi.length} teasers from API.`);
 
-            const teasers = data.data.results;
-            util.log(`Retrieved ${teasers.length} teasers from API`);
-
-            // Wait to ensure DOM elements are ready
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Select DOM elements
+            await new Promise(resolve => setTimeout(resolve, 200));
             const teaserEls = document.querySelectorAll(CONFIG.selectors.likedPreviewContainer);
+            if (!teaserEls || teaserEls.length === 0) { util.error('No DOM elements found for teasers.'); deblurringInProgress = false; return false; }
 
-            if (!teaserEls || teaserEls.length === 0) {
-                util.error('No elements found to deblur. Selectors might be outdated?');
-                return false;
-            }
-
-            util.log(`Found ${teaserEls.length} elements to deblur`);
-
-            // Replace blurred images with original ones
-            let successCount = 0;
-
-            // Deblur only up to the minimum between DOM elements and API data count
-            const processCount = Math.min(teaserEls.length, teasers.length);
+            let newUsersProcessedCount = 0;
+            let knownUsersUpdatedCount = 0;
+            const processCount = Math.min(teaserEls.length, teasersFromApi.length);
 
             for (let i = 0; i < processCount; i++) {
-                const teaser = teasers[i];
                 const element = teaserEls[i];
+                const apiTeaserData = teasersFromApi[i];
 
-                if (teaser && teaser.user && teaser.user._id && teaser.user.photos && teaser.user.photos.length > 0) {
-                    const userId = teaser.user._id;
-                    const photoId = teaser.user.photos[0].id;
+                if (!apiTeaserData || !apiTeaserData.user || !apiTeaserData.user._id) continue;
+                const userId = apiTeaserData.user._id;
 
-                    // Construct original image URL
-                    const originalImageUrl = `https://preview.gotinder.com/${userId}/original_${photoId}.jpeg`;
+                const isNewUser = !processedUserIds.has(userId);
+                const alreadyMarkedInDOM = element.dataset.tinderScriptProcessed === 'true';
 
-                    // Apply original image and remove filter
-                    element.style.backgroundImage = `url("${originalImageUrl}")`;
-                    element.style.filter = 'none';
-                    successCount++;
+                if (isNewUser || !alreadyMarkedInDOM) {
+                    infoHelper.clearPreviousInfo(element);
+                    infoHelper.addOrUpdateInfo(element, '', 'tinder-info-overlay-container', '', { display: 'none' });
 
-                    // Add attributes with user data (optional)
-                    if (teaser.user.name) {
-                        element.setAttribute('data-name', teaser.user.name);
+                    if (apiTeaserData.user.photos && apiTeaserData.user.photos.length > 0) {
+                        const photoId = apiTeaserData.user.photos[0].id;
+                        if (photoId) {
+                            const originalImageUrl = `https://preview.gotinder.com/${userId}/original_${photoId}.jpeg`;
+                            element.style.backgroundImage = `url("${originalImageUrl}")`;
+                            element.style.filter = 'none';
+                        } else {
+                            util.error(`Photo ID missing for user ${userId}. Using small image.`);
+                            element.style.backgroundImage = `url("${apiTeaserData.user.photos[0].url}")`;
+                            element.style.filter = 'none';
+                        }
+                    } else { util.error(`No photos array for user ${userId}.`); }
+
+                    const userData = apiTeaserData.user;
+                    if (userData.birth_date) {
+                        const age = infoHelper.calculateAge(userData.birth_date);
+                        if (age !== null) infoHelper.addOrUpdateInfo(element, `Idade: ${age}`, 'info-age', '🎂');
+                    }
+                    if (apiTeaserData.distance_mi !== undefined) {
+                        infoHelper.addOrUpdateInfo(element, `Distância: ${apiTeaserData.distance_mi} mi`, 'info-distance', '📍');
+                    }
+                    if (userData.recently_active !== undefined) {
+                        infoHelper.addOrUpdateInfo(element, userData.recently_active ? "Ativo" : "Inativo", 'info-activity', userData.recently_active ? "🟢" : "⚪️");
+                    }
+                    if (userData.badges && userData.badges.some(b => b.type === 'selfie_verified')) {
+                        infoHelper.addOrUpdateInfo(element, "Verificado", 'info-verified', '✔️');
+                    }
+                    if (userData.name) {
+                        element.setAttribute('data-name', userData.name);
+                        infoHelper.addOrUpdateInfo(element, `Nome: ${userData.name}`, 'info-name', '👤');
+                    } else if (userData.name_length) {
+                        infoHelper.addOrUpdateInfo(element, `Nome (${userData.name_length} letras)`, 'info-name-length', '👤');
+                    }
+
+                    element.removeEventListener('mouseenter', showInfo);
+                    element.removeEventListener('mouseleave', hideInfo);
+                    element.addEventListener('mouseenter', showInfo);
+                    element.addEventListener('mouseleave', hideInfo);
+
+                    element.dataset.tinderScriptProcessed = 'true';
+
+                    if (isNewUser) {
+                        await saveProcessedId(userId);
+                        newUsersProcessedCount++;
+                    } else {
+                        knownUsersUpdatedCount++;
                     }
                 }
             }
-
-            util.log(`Successfully deblurred ${successCount} images!`);
-            return successCount > 0;
+            util.log(`Finished. New: ${newUsersProcessedCount}. Updated visuals for known: ${knownUsersUpdatedCount}.`);
+            deblurringInProgress = false;
+            return true;
         } catch (error) {
-            util.error(`Error deblurring images: ${error.message || error}`);
+            util.error(`Critical error: ${error.message || error}`, error.stack);
+            deblurringInProgress = false;
             return false;
         }
     };
 
-    // Check if the user is on the "Likes You" page
-    const isOnLikesPage = () => {
-        const path = window.location.pathname;
-        return path.includes('/app/likes-you') || path.includes('/app/gold-home');
-    };
+    function showInfo(event) {
+        const infoContainer = event.currentTarget.querySelector('.tinder-info-overlay-container');
+        if (infoContainer) infoContainer.style.display = 'flex';
+    }
 
-    // Create floating button
+    function hideInfo(event) {
+        const infoContainer = event.currentTarget.querySelector('.tinder-info-overlay-container');
+        if (infoContainer) infoContainer.style.display = 'none';
+    }
+
+    const isOnLikesPage = () => window.location.pathname === '/app/likes-you';
+
     const createDeblurButton = () => {
-        const button = document.createElement('button');
-        button.textContent = 'Deblur Photos';
-        button.id = 'tinder-deblur-button';
-        document.body.appendChild(button);
-
-        // Add button styles
+        if (document.getElementById('tinder-deblur-button')) {
+            deblurButton = document.getElementById('tinder-deblur-button'); // Re-atribuir se já existe
+            return;
+        }
+        deblurButton = document.createElement('button');
+        deblurButton.textContent = 'Revelar & Info';
+        deblurButton.id = 'tinder-deblur-button';
         util.addStyle(`
             #tinder-deblur-button {
-                position: fixed;
-                top: 15px;
-                right: 15px;
-                z-index: 9999;
-                background-color: #FE3C72;
-                color: white;
-                border: none;
-                border-radius: 20px;
-                padding: 8px 16px;
-                font-weight: bold;
-                cursor: pointer;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-                transition: background-color 0.3s;
+                position: fixed; top: 15px; right: 15px; z-index: 10001;
+                background-color: #FD3A73; color: white; border: none;
+                border-radius: 22px; padding: 10px 18px; font-weight: bold;
+                cursor: pointer; box-shadow: 0 3px 9px rgba(0,0,0,0.15);
+                transition: background-color 0.2s ease-out, transform 0.1s ease-out;
+                align-items: center; justify-content: center;
             }
-            #tinder-deblur-button:hover {
-                background-color: #FF6B81;
-            }
-            #tinder-deblur-button:active {
-                transform: scale(0.98);
-            }
+            #tinder-deblur-button:hover { background-color: #E22C60; }
+            #tinder-deblur-button:active { transform: scale(0.97); }
+            #tinder-deblur-button:disabled { background-color: #B0B0B0; cursor: not-allowed; opacity: 0.7; }
         `);
+        document.body.appendChild(deblurButton);
 
-        // Add click event
-        button.addEventListener('click', async () => {
-            button.textContent = 'Deblurring...';
-            button.disabled = true;
-
-            const success = await deblurImages();
-
-            if (success) {
-                button.textContent = 'Success!';
-                setTimeout(() => {
-                    button.textContent = 'Deblur Photos';
-                    button.disabled = false;
-                }, 2000);
-            } else {
-                button.textContent = 'Failed!';
-                setTimeout(() => {
-                    button.textContent = 'Try Again';
-                    button.disabled = false;
-                }, 2000);
-            }
+        deblurButton.addEventListener('click', async () => {
+            const originalText = deblurButton.textContent;
+            deblurButton.textContent = 'Processando...';
+            deblurButton.disabled = true;
+            await resetProcessedIds();
+            await deblurImagesAndAddInfo();
+            deblurButton.textContent = 'Concluído!';
+            setTimeout(() => {
+                deblurButton.textContent = originalText;
+                deblurButton.disabled = false;
+            }, 1500);
         });
-
-        return button;
     };
 
-    // Observe URL changes to trigger deblurring
+    let urlCheckInterval;
     const observeUrlChanges = () => {
         let lastPathname = window.location.pathname;
-
-        setInterval(() => {
+        if (urlCheckInterval) clearInterval(urlCheckInterval);
+        urlCheckInterval = setInterval(() => {
+            if (!document.body.contains(deblurButton)) {
+                createDeblurButton();
+            }
             const currentPath = window.location.pathname;
             if (currentPath !== lastPathname) {
                 lastPathname = currentPath;
-
-                if (isOnLikesPage()) {
-                    util.log('Detected Likes page, automatically deblurring...');
-                    setTimeout(() => {
-                        deblurImages();
-                    }, CONFIG.delays.deblurAttempt);
+                if (isOnLikesPage() && !deblurringInProgress) {
+                    util.log('URL may have changed within Likes page (or to it), auto-processing...');
+                    setTimeout(deblurImagesAndAddInfo, CONFIG.delays.deblurAttempt);
                 }
             }
         }, CONFIG.delays.domCheck);
     };
 
-    // Set up mutation observer to detect new elements
+    let domObserver;
     const setupDomObserver = () => {
-        if (!window.MutationObserver) {
-            util.error('MutationObserver is not supported in this browser');
-            return;
-        }
+        if (!window.MutationObserver) return;
+        if (domObserver) domObserver.disconnect();
 
-        const observer = new MutationObserver((mutations) => {
-            if (!isOnLikesPage()) return;
-
-            for (const mutation of mutations) {
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    const previewElements = document.querySelectorAll(CONFIG.selectors.likedPreviewContainer);
-
-                    if (previewElements && previewElements.length > 0) {
-                        setTimeout(() => {
-                            deblurImages();
-                        }, CONFIG.delays.deblurAttempt);
-                        break;
-                    }
+        domObserver = new MutationObserver(() => {
+            if (deblurringInProgress) return;
+            clearTimeout(observerDebounceTimeout);
+            observerDebounceTimeout = setTimeout(async () => {
+                const unprocessedElements = document.querySelectorAll(`${CONFIG.selectors.likedPreviewContainer}:not([data-tinder-script-processed="true"])`);
+                if (unprocessedElements.length > 0) {
+                    util.log('Observer detected potential new/unprocessed elements. Re-processing...');
+                    await deblurImagesAndAddInfo();
                 }
-            }
+            }, CONFIG.delays.observerDebounce);
         });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-
-        return observer;
+        domObserver.observe(document.body, { childList: true, subtree: true });
     };
 
-    // Initialize script
-    const initialize = () => {
-        util.log('Initializing Simplified Tinder Deblur script...');
-
+    const initialize = async () => {
+        util.log('Initializing script...');
+        await loadProcessedIds();
         createDeblurButton();
         observeUrlChanges();
         setupDomObserver();
-
         if (isOnLikesPage()) {
-            util.log('Likes page detected, automatically deblurring...');
-            setTimeout(() => {
-                deblurImages();
-            }, CONFIG.delays.pageLoad);
+            setTimeout(deblurImagesAndAddInfo, CONFIG.delays.pageLoad);
         }
-
-        util.log('Script initialized successfully!');
+        util.log('Script initialized. Active on /app/likes-you.');
     };
 
-    // Start script when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initialize);
+    if (typeof window.tinderDeblurInitialized === 'undefined') {
+        window.tinderDeblurInitialized = true;
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initialize);
+        } else {
+            initialize();
+        }
     } else {
-        initialize();
+        util.log("Script was already initialized. Ensuring components are active.");
+        if (!document.getElementById('tinder-deblur-button')) createDeblurButton();
+        // Observadores já devem estar ativos ou serão recriados na próxima inicialização se houver falha
     }
 })();
