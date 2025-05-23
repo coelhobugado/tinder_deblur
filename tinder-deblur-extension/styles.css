@@ -1,40 +1,110 @@
-#botao-desembacar-tinder {
-  position: fixed;
-  top: 15px;
-  right: 15px;
-  z-index: 9999;
-  background-color: #FE3C72;
+/* Styles for the extension popup (popup.html) */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 14px;
+  margin: 0;
+  padding: 15px;
+  background-color: #f4f4f4;
+  color: #333;
+  width: 250px; /* Fixed width for the popup */
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 {
+  font-size: 18px;
+  color: #e91e63; /* Tinder-like pink */
+  margin-top: 0;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+button#desembacarBtn {
+  background-color: #e91e63; /* Tinder-like pink */
   color: white;
   border: none;
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-weight: bold;
+  padding: 10px 15px;
+  font-size: 14px;
+  border-radius: 5px;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  transition: background-color 0.3s;
+  transition: background-color 0.3s ease;
+  width: 100%; /* Make button take full width */
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
 }
 
-#botao-desembacar-tinder:hover {
-  background-color: #FF6B81;
+button#desembacarBtn:hover {
+  background-color: #d81350; /* Darker pink for hover */
 }
 
-#botao-desembacar-tinder:active {
-  transform: scale(0.98);
+button#desembacarBtn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
 }
 
+p#statusMessage {
+  margin-top: 15px;
+  font-size: 12px;
+  text-align: center;
+  min-height: 16px; /* Reserve space for message */
+}
+
+.success {
+  color: #28a745; /* Green for success */
+}
+
+.error {
+  color: #dc3545; /* Red for error */
+}
+
+/* Styles for the profile information tooltip injected into Tinder pages */
+.profile-tooltip {
+  position: absolute;
+  bottom: 5px;
+  left: 5px;
+  right: 5px;
+  z-index: 10000; /* Ensure it's above most elements, consistent with JS */
+  background-color: rgba(0, 0, 0, 0.85);
+  color: white;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  pointer-events: none; /* Allow clicks to pass through to elements below if needed */
+}
+
+.profile-tooltip > div {
+  margin-bottom: 4px;
+}
+
+.profile-tooltip > div:last-child {
+  margin-bottom: 0;
+}
+
+/* Optional: Styling for specific data points if they had icons or unique classes */
+/* For example, if we added <span class="tooltip-name">Name</span> */
+/* .profile-tooltip .tooltip-name { font-weight: bold; } */
+
+/* Styling for the status message div injected by content script */
 .tinder-deblur-status {
   position: fixed;
-  bottom: 15px;
-  right: 15px;
-  z-index: 9999;
-  background-color: rgba(0, 0, 0, 0.7);
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
   color: white;
   border-radius: 5px;
-  padding: 8px 12px;
+  z-index: 10001; /* Even higher than tooltips */
   font-size: 14px;
-  pointer-events: none;
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity 0.5s ease-in-out;
+  pointer-events: none;
 }
 
 .tinder-deblur-status.visible {
