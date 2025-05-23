@@ -77,6 +77,129 @@ const util = {
     if (processados.size > 1000) {
       processados.clear();
     }
+  },
+  /**
+   * Calculates age based on a birth date string.
+   * @param {string} birthDateString - The date of birth as a string (e.g., "YYYY-MM-DDTHH:mm:ss.sssZ").
+   * @returns {number|null} The calculated age as a number, or null if the date string is invalid or missing.
+   */
+  calculateAge: (birthDateString) => {
+    if (!birthDateString) return null;
+    try {
+      const birthDate = new Date(birthDateString);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    } catch (e) {
+      console.error("[Tinder Deblur] Error parsing birth date:", e);
+      return null;
+    }
+  },
+  /**
+   * Formats an ISO 8601 date string to "DD/MM/YYYY" format.
+   * @param {string} dateString - The date string to format (e.g., "YYYY-MM-DDTHH:mm:ss.sssZ").
+   * @returns {string|null} The formatted date string, or null if the input is invalid or formatting fails.
+   */
+  formatBirthDate: (dateString) => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return null; // Invalid date
+      }
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (e) {
+      console.error("[Tinder Deblur] Error formatting birth date:", e);
+      return null;
+    }
+  }
+};
+
+// Tooltip Management Functions
+/**
+ * Creates and displays a tooltip with profile information for a given element.
+ * The tooltip is appended as a child to the element and a reference is stored in element.tooltipElement.
+ * @param {HTMLElement} element - The DOM element to which the tooltip will be attached.
+ */
+const createTooltip = (element) => {
+  // Prevent multiple tooltips on the same element
+  if (element.tooltipElement) {
+    return;
+  }
+
+  // Retrieve profile data from element's data attributes
+  const name = element.getAttribute('data-name');
+  const birthDateString = element.getAttribute('data-birth-date');
+  const distanceMi = element.getAttribute('data-distance-mi');
+  const recentlyActive = element.getAttribute('data-recently-active');
+  const isVerified = element.getAttribute('data-is-verified');
+
+  // Construct tooltip HTML content in Portuguese, including Name, Age, Birth Date, Distance, Activity, and Verification status.
+  let contentParts = [];
+  if (name) {
+    contentParts.push(`<div>👤 Nome: <strong>${name}</strong></div>`);
+  }
+
+  const age = util.calculateAge(birthDateString);
+  if (age !== null) {
+    contentParts.push(`<div>🎂 Idade: ${age}</div>`);
+  }
+
+  // Add formatted birth date (already in Portuguese)
+  const formattedBirthDate = util.formatBirthDate(birthDateString);
+  if (formattedBirthDate) {
+    contentParts.push(`<div>🎂 Data de Nascimento: ${formattedBirthDate}</div>`);
+  }
+
+  if (distanceMi !== null) {
+    contentParts.push(`<div>📍 Distância: ${distanceMi} mi</div>`);
+  }
+
+  if (recentlyActive !== null) {
+    contentParts.push(`<div>${recentlyActive === 'true' ? '🟢 Ativo Recentemente' : '⚪️ Inativo'}</div>`);
+  }
+
+  if (isVerified !== null) {
+    contentParts.push(`<div>${isVerified === 'true' ? '✔️ Verificado' : '❌ Não Verificado'}</div>`);
+  }
+
+  // Do not show tooltip if there's no content to display
+  if (contentParts.length === 0) {
+    return;
+  }
+
+  // Create and style the tooltip element
+  const tooltipDiv = document.createElement('div');
+  tooltipDiv.className = 'profile-tooltip'; // Styling is handled by CSS
+  tooltipDiv.innerHTML = contentParts.join('');
+
+  // Ensure parent element has relative or absolute positioning for correct tooltip placement.
+  // This is one of the few style manipulations kept in JS due to its dynamic nature.
+  const parentPosition = window.getComputedStyle(element).position;
+  if (parentPosition !== 'relative' && parentPosition !== 'absolute') {
+    element.style.position = 'relative';
+  }
+
+  // Append tooltip to the element and store a reference
+  element.appendChild(tooltipDiv);
+  element.tooltipElement = tooltipDiv;
+};
+
+/**
+ * Removes the profile information tooltip from the given element.
+ * @param {HTMLElement} element - The DOM element from which the tooltip will be removed.
+ */
+const removeTooltip = (element) => {
+  if (element.tooltipElement) {
+    element.tooltipElement.remove();
+    element.tooltipElement = null; // Clear the reference
   }
 };
 
@@ -172,6 +295,31 @@ const desembacarImagens = async () => {
         // Definir um atributo para rastrear o usuário
         elemento.setAttribute('data-user-id', userId);
 
+        // Extract and set various data attributes from the teaser object to the DOM element.
+        // These attributes are later used by the tooltip creation function.
+        if (teaser.user.name) {
+          elemento.setAttribute('data-name', teaser.user.name);
+          // Set the main browser tooltip to the user's name for basic hover info,
+          // supplements the custom tooltip.
+          elemento.title = teaser.user.name;
+        }
+        if (teaser.user.birth_date) {
+          elemento.setAttribute('data-birth-date', teaser.user.birth_date);
+        }
+        if (typeof teaser.distance_mi !== 'undefined') { // Check for undefined as distance can be 0
+          elemento.setAttribute('data-distance-mi', teaser.distance_mi);
+        }
+        if (typeof teaser.user.recently_active !== 'undefined') {
+          elemento.setAttribute('data-recently-active', teaser.user.recently_active);
+        }
+        // Check for verification badge
+        if (teaser.user.badges && Array.isArray(teaser.user.badges)) {
+          const isVerified = teaser.user.badges.some(badge => badge.type === 'selfie_verified');
+          elemento.setAttribute('data-is-verified', isVerified ? 'true' : 'false');
+        } else {
+          elemento.setAttribute('data-is-verified', 'false'); // Default if no badges array
+        }
+
         // Construir URL da imagem original
         const urlImagemOriginal = `https://preview.gotinder.com/${userId}/original_${photoId}.jpeg`;
 
@@ -180,12 +328,18 @@ const desembacarImagens = async () => {
         elemento.style.filter = 'none';
         contagemSucesso++;
 
-        // Adicionar atributos com dados do usuário (opcional)
-        if (teaser.user.name) {
-          elemento.setAttribute('data-nome', teaser.user.name);
-          // Adicionar tooltip com o nome do usuário
-          elemento.title = teaser.user.name;
-        }
+        // NOTE: User data attributes (like data-name, data-birth-date, etc.)
+        // and the tooltip (elemento.title) are set above.
+        // The main user name tooltip (elemento.title) is set when 'data-name' is set.
+
+        // Add event listeners for hover tooltips to show custom profile information.
+        // It's important to remove any potentially existing listeners first to prevent duplicates,
+        // especially if an element could somehow be processed multiple times (though `util.foiProcessado` aims to prevent this).
+        elemento.removeEventListener('mouseenter', createTooltip); // Use function reference for removal
+        elemento.removeEventListener('mouseleave', removeTooltip); // Use function reference for removal
+
+        elemento.addEventListener('mouseenter', () => createTooltip(elemento));
+        elemento.addEventListener('mouseleave', () => removeTooltip(elemento));
       }
     }
 
