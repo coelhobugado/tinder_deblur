@@ -98,6 +98,27 @@ const util = {
       console.error("[Tinder Deblur] Error parsing birth date:", e);
       return null;
     }
+  },
+  /**
+   * Formats an ISO 8601 date string to "DD/MM/YYYY" format.
+   * @param {string} dateString - The date string to format (e.g., "YYYY-MM-DDTHH:mm:ss.sssZ").
+   * @returns {string|null} The formatted date string, or null if the input is invalid or formatting fails.
+   */
+  formatBirthDate: (dateString) => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return null; // Invalid date
+      }
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (e) {
+      console.error("[Tinder Deblur] Error formatting birth date:", e);
+      return null;
+    }
   }
 };
 
@@ -120,27 +141,33 @@ const createTooltip = (element) => {
   const recentlyActive = element.getAttribute('data-recently-active');
   const isVerified = element.getAttribute('data-is-verified');
 
-  // Construct tooltip HTML content
+  // Construct tooltip HTML content in Portuguese, including Name, Age, Birth Date, Distance, Activity, and Verification status.
   let contentParts = [];
   if (name) {
-    contentParts.push(`<div>👤 <strong>${name}</strong></div>`);
+    contentParts.push(`<div>👤 Nome: <strong>${name}</strong></div>`);
   }
 
   const age = util.calculateAge(birthDateString);
   if (age !== null) {
-    contentParts.push(`<div>🎂 Age: ${age}</div>`);
+    contentParts.push(`<div>🎂 Idade: ${age}</div>`);
+  }
+
+  // Add formatted birth date (already in Portuguese)
+  const formattedBirthDate = util.formatBirthDate(birthDateString);
+  if (formattedBirthDate) {
+    contentParts.push(`<div>🎂 Data de Nascimento: ${formattedBirthDate}</div>`);
   }
 
   if (distanceMi !== null) {
-    contentParts.push(`<div>📍 Distance: ${distanceMi} mi</div>`);
+    contentParts.push(`<div>📍 Distância: ${distanceMi} mi</div>`);
   }
 
   if (recentlyActive !== null) {
-    contentParts.push(`<div>${recentlyActive === 'true' ? '🟢 Recently Active' : '⚪️ Inactive'}</div>`);
+    contentParts.push(`<div>${recentlyActive === 'true' ? '🟢 Ativo Recentemente' : '⚪️ Inativo'}</div>`);
   }
 
   if (isVerified !== null) {
-    contentParts.push(`<div>${isVerified === 'true' ? '✔️ Verified' : '❌ Not Verified'}</div>`);
+    contentParts.push(`<div>${isVerified === 'true' ? '✔️ Verificado' : '❌ Não Verificado'}</div>`);
   }
 
   // Do not show tooltip if there's no content to display
