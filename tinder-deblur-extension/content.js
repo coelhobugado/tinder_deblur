@@ -15,9 +15,6 @@ const CONFIG = {
   }
 };
 
-// Rastreador de elementos já processados
-const processados = new Set();
-
 // Utilitários para log e manipulação de elementos
 const util = {
   log: (mensagem) => {
@@ -55,32 +52,11 @@ const util = {
       statusEl.classList.remove('visible');
     }, 3000);
   },
-  // Verifica se um elemento já foi processado
-  foiProcessado: (elemento) => {
-    // Criar um ID único baseado na posição do elemento e outras propriedades
-    const id = elemento.offsetTop + '_' + elemento.offsetLeft + '_' +
-               (elemento.getAttribute('data-user-id') || '') + '_' +
-               (elemento.style.backgroundImage || '');
-
-    // Verificar se este ID já está no conjunto de elementos processados
-    if (processados.has(id)) {
-      return true;
-    }
-
-    // Marcar como processado
-    processados.add(id);
-    return false;
-  },
-  // Limpar elementos processados para evitar vazamento de memória
-  limparProcessados: () => {
-    // Limitar o tamanho do conjunto para evitar vazamento de memória
-    if (processados.size > 1000) {
-      processados.clear();
-    }
-  },
+  // Obsolete functions util.foiProcessado and util.limparProcessados were here.
+  // The logic for preventing reprocessing is now handled by the 'data-deblurred' attribute.
   /**
    * Calculates age based on a birth date string.
-   * @param {string} birthDateString - The date of birth as a string (e.g., "YYYY-MM-DDTHH:mm:ss.sssZ").
+   * @param {string} birthDateString - The date of birth as a string (e.g., "YYYY-MM-DDTHH:mm:ss.sssZ"), typically sourced from the 'data-birth-date' attribute on a DOM element.
    * @returns {number|null} The calculated age as a number, or null if the date string is invalid or missing.
    */
   calculateAge: (birthDateString) => {
@@ -98,34 +74,16 @@ const util = {
       console.error("[Tinder Deblur] Error parsing birth date:", e);
       return null;
     }
-  },
-  /**
-   * Formats an ISO 8601 date string to "DD/MM/YYYY" format.
-   * @param {string} dateString - The date string to format (e.g., "YYYY-MM-DDTHH:mm:ss.sssZ").
-   * @returns {string|null} The formatted date string, or null if the input is invalid or formatting fails.
-   */
-  formatBirthDate: (dateString) => {
-    if (!dateString) return null;
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return null; // Invalid date
-      }
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
-      const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
-    } catch (e) {
-      console.error("[Tinder Deblur] Error formatting birth date:", e);
-      return null;
-    }
   }
+  // util.formatBirthDate function was fully removed previously.
 };
 
 // Tooltip Management Functions
 /**
  * Creates and displays a tooltip with profile information for a given element.
  * The tooltip is appended as a child to the element and a reference is stored in element.tooltipElement.
+ * Displays Name, Age (calculated from 'data-birth-date'), Distance, Activity, and Verification status.
+ * The birth date itself is not displayed.
  * @param {HTMLElement} element - The DOM element to which the tooltip will be attached.
  */
 const createTooltip = (element) => {
@@ -136,12 +94,14 @@ const createTooltip = (element) => {
 
   // Retrieve profile data from element's data attributes
   const name = element.getAttribute('data-name');
-  const birthDateString = element.getAttribute('data-birth-date');
+  const birthDateString = element.getAttribute('data-birth-date'); // Used for age calculation, not direct display
   const distanceMi = element.getAttribute('data-distance-mi');
   const recentlyActive = element.getAttribute('data-recently-active');
   const isVerified = element.getAttribute('data-is-verified');
 
-  // Construct tooltip HTML content in Portuguese, including Name, Age, Birth Date, Distance, Activity, and Verification status.
+  // Construct tooltip HTML content in Portuguese.
+  // Includes Name, Age, Distance, Activity, and Verification status.
+  // birthDateString is used to calculate age but is not displayed directly.
   let contentParts = [];
   if (name) {
     contentParts.push(`<div>👤 Nome: <strong>${name}</strong></div>`);
@@ -152,11 +112,11 @@ const createTooltip = (element) => {
     contentParts.push(`<div>🎂 Idade: ${age}</div>`);
   }
 
-  // Add formatted birth date (already in Portuguese)
-  const formattedBirthDate = util.formatBirthDate(birthDateString);
-  if (formattedBirthDate) {
-    contentParts.push(`<div>🎂 Data de Nascimento: ${formattedBirthDate}</div>`);
-  }
+  // Formatted birth date display removed
+  // const formattedBirthDate = util.formatBirthDate(birthDateString); // Removed
+  // if (formattedBirthDate) { // Removed
+  //   contentParts.push(`<div>🎂 Data de Nascimento: ${formattedBirthDate}</div>`); // Removed
+  // } // Removed
 
   if (distanceMi !== null) {
     contentParts.push(`<div>📍 Distância: ${distanceMi} mi</div>`);
@@ -272,22 +232,14 @@ const desembacarImagens = async () => {
       const teaser = teasers[i];
       const elemento = teaserEls[i];
 
-      // Verificar se este elemento já foi processado
-      if (util.foiProcessado(elemento)) {
+      // Skip if element has already been deblurred (marked with 'data-deblurred="true"')
+      if (elemento.getAttribute('data-deblurred') === 'true') {
         contagemJaProcessados++;
-        util.log(`Elemento ${i} já foi processado anteriormente, pulando...`);
+        util.log(`Elemento ${i} já foi desembaçado (data-deblurred=true), pulando...`);
         continue;
       }
 
-      // Verificar se já tem uma imagem não-embaçada
-      const urlAtual = elemento.style.backgroundImage || '';
-      if (urlAtual.includes('original_') && !urlAtual.includes('blur')) {
-        util.log(`Elemento ${i} já tem imagem original, pulando...`);
-        contagemJaProcessados++;
-        continue;
-      }
-
-      // Verificando se tem dados de usuário válidos
+      // Check if teaser data is valid (user, _id, photos) before proceeding
       if (teaser && teaser.user && teaser.user._id && teaser.user.photos && teaser.user.photos.length > 0) {
         const userId = teaser.user._id;
         const photoId = teaser.user.photos[0].id;
@@ -303,7 +255,7 @@ const desembacarImagens = async () => {
           // supplements the custom tooltip.
           elemento.title = teaser.user.name;
         }
-        if (teaser.user.birth_date) {
+        if (teaser.user.birth_date) { // Reinstate data-birth-date setting for age calculation
           elemento.setAttribute('data-birth-date', teaser.user.birth_date);
         }
         if (typeof teaser.distance_mi !== 'undefined') { // Check for undefined as distance can be 0
@@ -326,9 +278,10 @@ const desembacarImagens = async () => {
         // Aplicar imagem original e remover filtro
         elemento.style.backgroundImage = `url("${urlImagemOriginal}")`;
         elemento.style.filter = 'none';
+        elemento.setAttribute('data-deblurred', 'true'); // Mark as deblurred to prevent reprocessing in future runs.
         contagemSucesso++;
 
-        // NOTE: User data attributes (like data-name, data-birth-date, etc.)
+        // NOTE: User data attributes (like data-name, data-birth-date, etc.) are set above.
         // and the tooltip (elemento.title) are set above.
         // The main user name tooltip (elemento.title) is set when 'data-name' is set.
 
@@ -343,8 +296,7 @@ const desembacarImagens = async () => {
       }
     }
 
-    // Limpar conjunto de elementos processados periodicamente
-    util.limparProcessados();
+    // Obsolete util.limparProcessados() call was here.
 
     let mensagemSucesso = '';
     if (contagemSucesso > 0) {
@@ -430,8 +382,8 @@ const observarMudancasURL = () => {
     const caminhoAtual = window.location.pathname;
     if (caminhoAtual !== ultimoPathname) {
       ultimoPathname = caminhoAtual;
-      // Resetar processados quando mudar de página
-      processados.clear();
+      // Obsolete processados.clear() call was here (related to old Set-based tracking).
+      // The current 'data-deblurred' attribute persists on elements unless the page fully reloads them.
 
       if (estaNaPaginaCurtidas()) {
         util.log('Detectada página de curtidas, desembaçando automaticamente...');
@@ -520,8 +472,7 @@ const configurarObservadorDOM = () => {
 const inicializar = () => {
   util.log('Inicializando extensão Tinder Deblur...');
 
-  // Limpar qualquer estado anterior
-  processados.clear();
+  // Obsolete processados.clear() call was here.
   desembacarAgendado = false;
   mutationDesembacarAgendado = false;
 
