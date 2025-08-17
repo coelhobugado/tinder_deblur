@@ -370,131 +370,21 @@ const criarBotaoDesembacar = () => {
   return botao;
 };
 
-// Variável para controlar as tentativas de desembaçamento
-let desembacarAgendado = false;
-
-// Observar mudanças na URL para ativar o desembaçamento quando necessário
-const observarMudancasURL = () => {
-  let ultimoPathname = window.location.pathname;
-
-  // Verificar mudanças na URL periodicamente
-  setInterval(() => {
-    const caminhoAtual = window.location.pathname;
-    if (caminhoAtual !== ultimoPathname) {
-      ultimoPathname = caminhoAtual;
-      // Obsolete processados.clear() call was here (related to old Set-based tracking).
-      // The current 'data-deblurred' attribute persists on elements unless the page fully reloads them.
-
-      if (estaNaPaginaCurtidas()) {
-        util.log('Detectada página de curtidas, desembaçando automaticamente...');
-
-        // Adicionar botão se ele não existir
-        if (!document.getElementById('botao-desembacar-tinder')) {
-          criarBotaoDesembacar();
-        }
-
-        // Evitar agendamentos múltiplos
-        if (!desembacarAgendado) {
-          desembacarAgendado = true;
-          // Atraso para garantir que o DOM esteja carregado após mudança de página
-          setTimeout(() => {
-            desembacarImagens().finally(() => {
-              desembacarAgendado = false;
-            });
-          }, CONFIG.atrasos.tentativaDesembacar);
-        }
-      } else {
-        // Remover botão se não estiver na página de curtidas
-        const botao = document.getElementById('botao-desembacar-tinder');
-        if (botao) {
-          botao.remove();
-        }
-      }
-    }
-  }, CONFIG.atrasos.verificacaoDOM);
-};
-
-// Variável para controlar tentativas de desembaçamento via MutationObserver
-let mutationDesembacarAgendado = false;
-
-// Configurar observador de mutações para detectar quando novos elementos são adicionados
-const configurarObservadorDOM = () => {
-  // Verificar se MutationObserver está disponível
-  if (!window.MutationObserver) {
-    util.erro('MutationObserver não suportado neste navegador');
-    return;
-  }
-
-  const observer = new MutationObserver((mutacoes) => {
-    // Verificar se estamos na página de curtidas
-    if (!estaNaPaginaCurtidas()) return;
-
-    // Verificar se novas curtidas foram carregadas
-    let novoElementoDetectado = false;
-    for (const mutacao of mutacoes) {
-      if (mutacao.type === 'childList' && mutacao.addedNodes.length > 0) {
-        const elementosPreview = document.querySelectorAll(CONFIG.seletores.containerPreviewCurtidas);
-
-        // Se encontramos elementos que podem ser desembaçados, tente desembaçar
-        if (elementosPreview && elementosPreview.length > 0) {
-          novoElementoDetectado = true;
-          // Adicionar botão se ele não existir
-          if (!document.getElementById('botao-desembacar-tinder')) {
-            criarBotaoDesembacar();
-          }
-          break; // Sair do loop se encontramos elementos
-        }
-      }
-    }
-
-    // Se detectou novos elementos e não está agendado, agendar desembaçamento
-    if (novoElementoDetectado && !mutationDesembacarAgendado) {
-      mutationDesembacarAgendado = true;
-      // Adicionar atraso para garantir que o conteúdo esteja completamente carregado
-      setTimeout(() => {
-        desembacarImagens().finally(() => {
-          mutationDesembacarAgendado = false;
-        });
-      }, CONFIG.atrasos.tentativaDesembacar);
-    }
-  });
-
-  // Observar o corpo da página para quaisquer alterações
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
-
-  return observer;
-};
+// As funções de observação automática (observarMudancasURL, configurarObservadorDOM)
+// e suas variáveis de controle foram removidas para desativar o comportamento automático.
 
 // Inicializar o script
 const inicializar = () => {
   util.log('Inicializando extensão Tinder Deblur...');
 
-  // Obsolete processados.clear() call was here.
-  desembacarAgendado = false;
-  mutationDesembacarAgendado = false;
-
-  // Se já estiver na página de curtidas, criar botão
+  // Cria o botão na página se o usuário estiver na página de curtidas.
+  // O desembaçamento agora só ocorre por ação manual (clique no botão da página ou do popup).
   if (estaNaPaginaCurtidas()) {
-    util.log('Página de curtidas detectada, criando botão...');
     criarBotaoDesembacar();
-
-    // Tentar desembaçar após carregamento completo
-    desembacarAgendado = true;
-    setTimeout(() => {
-      desembacarImagens().finally(() => {
-        desembacarAgendado = false;
-      });
-    }, CONFIG.atrasos.carregamentoPagina);
   }
 
-  // Configurar observadores para mudanças na página
-  observarMudancasURL();
-  configurarObservadorDOM();
-
-  // Configurar listener para mensagens do popup
+  // Configura o listener para receber a mensagem do popup da extensão.
+  // Este é um dos gatilhos manuais para o desembaçamento.
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'desembacar') {
       desembacarImagens().then(resultado => {
@@ -504,7 +394,7 @@ const inicializar = () => {
     }
   });
 
-  util.log('Extensão inicializada com sucesso!');
+  util.log('Extensão inicializada. O desembaçamento agora é manual.');
 };
 
 // Iniciar script quando o DOM estiver pronto
